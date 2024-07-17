@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>rec_label</title>
+    <style>
+        #dropArea {
+            width: 400px;
+            height: 200px;
+            border: 2px dashed gray;
+            text-align: center;
+            line-height: 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 60px auto;
+            cursor: pointer;
+        }
+        .down_button{
+            height: 40px;
+            position: fixed;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%); /* 使元素垂直居中 */
+            padding: 0px;
+            display: flex; 
+            flex-direction: column;
+            justify-content: center;
+        }
+        .vui_button{
+            color: #18191C;
+            background: #FFFFFF;
+            border: 1px solid #E3E5E7;
+            outline: none !important;/*去掉按钮点击时出现的黑色边框，!important关键字具有最高优先级，将覆盖任何其他样式规则*/
+
+            height: 50px;
+            padding: 0 15px;
+            border-radius: 6px;
+            font-size: 23px;
+            line-height: 2;       /*设置为 1 行高与字体大小相等*/
+            white-space: nowrap;  /*nowrap 禁止文本换行，使其在一行内水平显示*/
+            user-select: none;    /*none 禁止用户选择文本*/
+            cursor: pointer;
+        }
+        .vui_button:hover {
+            background: #E3E5E7;
+        }
+
+        .content {
+            display: flex;
+            flex-direction: column;/*值为row表示flex项水平排列；为column表示flex项垂直排列*/
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 100px;
+        }
+        .image-container {
+            width: 1600px;
+            height: 900px;
+        }
+        .myCanvas {
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* 图片适应容器 */
+        }
+
+        .data-row {  /* 识别的input */
+            margin-bottom: 5px;
+            font-size: 20px;
+            width: 60%;
+            height: 30px;
+            border: 1px solid #1E90FF;
+            border-radius: 5px;
+        }
+        .det_data {  /* 检测的input */
+            margin-bottom: 5px;
+            font-size: 20px;
+            width: 80px;
+            height: 30px;
+            border: 1px solid green;
+            border-radius: 5px;
+            margin-right: 8px;
+        }
+        .place{
+            display: inline-block; /* span默认是inline，不接受宽高 */
+            font-size: 20px;
+            font-weight: bold;
+            width: 66px;
+            height: 30px;
+            margin-left: 24px;
+        }
+
+        .pagination1 {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .searchPage{
+            /* display: flex;
+            align-items: center;
+            justify-content: center; */
+            height: 34px;
+            padding: 0 0 0 15px;
+            font-size: 18px;
+        }
+        #searchPage{
+            margin: 0 5px 0 5px;
+            padding: 4px 4px 4px 4px;
+            width: 34px;  /* 34px */
+            height: 26px;
+            border-radius: 6px;
+            border: 1px solid #E3E5E7;
+            outline: none !important;
+        }
+
+        .pictureName{
+            margin-bottom: 10px;
+            display: flex;          /* 使用Flexbox布局 */
+            justify-content: center;/* 水平居中 */  
+            align-items: center;    /* 垂直居中 */
+        }
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+</head>
+<body>
+
+    <div id="dropArea">
+        <input type="file" id="folderInput" style="display: none" webkitdirectory directory multiple>
+        <p style="line-height: 30px">点击选择图片文件夹</p>
+    </div>
+    <div id="dropArea1" style="cursor: pointer;margin: auto;align-items: center;justify-content: center;display: flex;flex-direction: column;"><!-- 点击上传 -->
+        <input type="file" id="jsonfolderInput" style="display: none">
+        <p style="line-height: 30px">点击选择相应的json文件</p>
+    </div>
+
+    <div class="container1" style="display: none; width: 96%">
+        <div class="pictureName">
+            <span class="searchPage" style="font-size: 20px;">图片名<input id="searchPageByName" style="font-size: 20px; width: 300px"></span>
+            <button class="vui_button" id="actionBtnByName">跳转</button>
+        </div>
+
+        <div class="content">
+            <div class="image-container" >
+                <img src="" alt="Image" style="display: none;"/>
+                <canvas class="myCanvas" id="myCanvas"></canvas>
+            </div>
+            <div class="data" style="width: 1200px;">
+                <div style="margin-top: 20px; margin-bottom: 5px;">
+                    <span class="place">左上x</span>
+                    <span class="place">左上y</span>
+                    <span class="place">右下x</span>
+                    <span class="place">右下y</span>
+                    <span class="place">识别</span>
+                </div>
+                <div class="data-container">
+                    <!-- 动态添加数据行 -->
+                </div>
+            </div>
+        </div>
+        <div id="pagination" class="pagination1">
+            <div style="width: 50%;">
+                <button class="vui_button" id="pre">上一张</button>
+                <span id="currentPage" class="current-page" style="font-size: 23px;">1</span>
+                <button class="vui_button" id="next">下一张</button>
+
+                <span class="searchPage" style="font-size: 20px;">跳转到<input id="searchPage" style="font-size: 20px;"><span style="font-size: 20px;">张</span></span>
+                <button class="vui_button" id="actionBtn">跳转</button>
+
+                <button class="vui_button" id="showTotalPage" style="pointer-events: none;">总页数：</button> <!-- 去除鼠标的悬停事件 -->
+                <span id="totalPage" class="current-page" style="font-size: 23px;"></span>
+                <button class="vui_button" id="backData" style="margin-left: 40px;">还原数据</button>
+                <button class="vui_button" id="addData">添加检测识别结果</button>
+            </div>
+        </div>
+        <div class="down_button">
+            <button id="down" style="width: 60px; height: 40px; border: transparent;cursor: pointer; background-color: #ccc;">提交</button>
+        </div>
+
+    </div>
+
+    <script>
+        const dropArea = document.getElementById('dropArea');
+        const dropArea1 = document.getElementById('dropArea1');
+        dropArea.addEventListener('click', function() {
+            document.getElementById('folderInput').click();
+        });
+        dropArea1.addEventListener('click', function() {
+            document.getElementById('jsonfolderInput').click();
+        });
+
+        let imageFiles = [];  // 图片路径
+        let jsonlabelFiles = [];  // json文件中的数据（图片名，识别列表）
+        let currentPage = 1;//第1张
+        let jsonfilename = "";//json文件名，用于保存文件
+
+        document.getElementById('folderInput').addEventListener('change', async function (event) {
+            let files = event.target.files;//files是一个FileList对象
+            
+            for (let i = 0; i < files.length; i++) {
+                let file = files[i]; // 图片文件
+                if (file.type.startsWith('image/')) {
+                    // imageFiles.push("./data/" + file.webkitRelativePath); //存入图片文件的路径   1304
+                    imageFiles.push("./data1/" + file.webkitRelativePath); //存入图片文件的路径   759
+                }
+            }
+            console.log("文件夹中的全部图片信息：", imageFiles)
+
+            if (imageFiles.length != 0 && jsonlabelFiles.length != 0) {
+                sendFiles(imageFiles, jsonlabelFiles);
+            }
+        });
+        document.getElementById('jsonfolderInput').addEventListener('change', async function (event) {
+            let jsonfile = event.target.files;
+
+            if (jsonfile.length === 0) {
+                console.log('没有选择文件。');
+                return;
+            }
+            const file = jsonfile[0];
+            jsonfilename = file.name;
+            if (file.name.endsWith('.json')) {
+                const fileReader = new FileReader();
+                fileReader.readAsText(file);//读取文件内容
+                fileReader.onload = function(e) {
+                    try {
+                        const jsonData = JSON.parse(e.target.result);//这个是json文件中的数据
+                        Object.keys(jsonData).forEach(imageName => {
+                            const imageRecognitionData = jsonData[imageName][1];  //拿到识别和检测框结果
+                            RecognitionData = []
+                            for(let i = 0; i < imageRecognitionData.length; i++){
+                                RecognitionData.push([imageRecognitionData[i][0], imageRecognitionData[i][1]])
+                            }
+                            jsonlabelFiles.push({imageName, RecognitionData});
+                        });
+                    } catch (error) {
+                        console.error('解析 JSON 文件时发生错误:', error);
+                    }
+                    console.log("json文件中的全部标签信息：", jsonlabelFiles)
+                    if (imageFiles.length != 0 && jsonlabelFiles.length != 0) {
+                        sendFiles(imageFiles, jsonlabelFiles);
+                    }
+                };
+            } else {
+                console.error('请选择一个 JSON 文件');
+            }
+        });
+        function sendFiles(imageFiles, jsonlabelFiles){
+            const dropArea = document.getElementById('dropArea');
+            dropArea.style.display = 'none'; // 设为不可见
+            const dropArea1 = document.getElementById('dropArea1');
+            dropArea1.style.display = 'none'; // 设为不可见
+            const container1 = document.querySelector('.container1');
+            container1.style.display = 'block'; // 设为可见
+
+            console.log("图片路径数：", imageFiles.length)
+            console.log("标签数：", jsonlabelFiles.length)
+            if (imageFiles.length != jsonlabelFiles.length) {
+                alert("图片数和标签数不一致，重新选择文件")
+                window.location.reload();
+                return
+            }
+            showPage();
+        }
+
+        let rectangles = []  // 存放所有矩形框的坐标
+        function handleInputChange(event) { // 坐标变化时修改矩形框变量
+            let index = Array.from(event.target.parentElement.parentElement.children).indexOf(event.target.parentElement); // 获取当前数据行的索引
+            let inputIndex = Array.from(event.target.parentElement.children).indexOf(event.target); // 获取当前input的索引
+            let value = Number(event.target.value); // Number()函数把对象的值转换为数字
+            let imgElement = document.querySelector('.image-container').querySelector('img');
+            if (value >= 0) {
+                console.log("当前行的索引,行的input索引,input中值:", index, inputIndex-1, value);
+                rectangles[index][inputIndex-1] = value;
+                draw_rectangle(imgElement)
+            } else {
+                alert("坐标必须大于0")
+                event.target.value = 0 // 重置为0
+            }
+        }
+        function showPage(){
+            console.log("进入showPage函数")
+            let imgElement = document.querySelector('.image-container').querySelector('img');
+            imgElement.src = imageFiles[currentPage-1];  // 显示图片
+
+            let imageName = imageFiles[currentPage-1].split("/").pop();
+            let searchPageByName = document.getElementById("searchPageByName");
+            searchPageByName.value = imageName;
+
+            rectangles = [] // 重置矩形框的坐标
+            let data = jsonlabelFiles[currentPage-1].RecognitionData
+            let dataContainer = document.querySelector('.data-container');
+            dataContainer.innerHTML = ''; // 清空容器
+            data.forEach(rowData => {  // 动态添加数据行
+                console.log("每行中的数据rowData：", rowData)
+                let divRow = document.createElement('div');
+
+                let span = document.createElement('span');
+                span.innerText = data.indexOf(rowData) + 1;
+                span.style.height = '30px'; // 设置高度
+                span.style.fontSize = '20px'; // 设置字体大小
+                span.style.marginRight = '10px'; // 设置右边距
+                divRow.appendChild(span);
+
+                let det_data1 = document.createElement('input');
+                let det_data2 = document.createElement('input');
+                let det_data3 = document.createElement('input');
+                let det_data4 = document.createElement('input');
+                det_data1.value = rowData[1][0]
+                det_data2.value = rowData[1][1]
+                det_data3.value = rowData[1][2]
+                det_data4.value = rowData[1][3]
+                det_data1.className = 'det_data'
+                det_data2.className = 'det_data'
+                det_data3.className = 'det_data'
+                det_data4.className = 'det_data'
+                det_data1.type = 'number'
+                det_data2.type = 'number'
+                det_data3.type = 'number'
+                det_data4.type = 'number'
+
+                det_data1.addEventListener('input', handleInputChange);
+                det_data2.addEventListener('input', handleInputChange);
+                det_data3.addEventListener('input', handleInputChange);
+                det_data4.addEventListener('input', handleInputChange);
+
+                let dataRow = document.createElement('input');
+                dataRow.value = rowData[0];
+                dataRow.type = 'text'; // 定义 input 类型为文本
+                dataRow.className = 'data-row'; // 使用 CSS 中定义的类   
+
+                divRow.appendChild(det_data1)
+                divRow.appendChild(det_data2)
+                divRow.appendChild(det_data3)
+                divRow.appendChild(det_data4)
+                divRow.appendChild(dataRow)
+
+                divRow.style.display = "block"
+                dataContainer.appendChild(divRow);
+
+                rectangles.push([rowData[1][0], rowData[1][1], rowData[1][2], rowData[1][3]]);
+            });
+            console.log("所有矩形框的坐标：", rectangles)
+            onload_draw_rectangle(imgElement)
+
+            let currentPageElement = document.getElementById("currentPage");//显示的当前页数
+            currentPageElement.innerText = currentPage;
+            let totalPageElement = document.getElementById("totalPage");
+            totalPageElement.innerText = imageFiles.length;
+        }
+        function onload_draw_rectangle(imgElement) { // 等待图片加载完成后进行绘制，是异步执行
+            // console.log("进入onload_draw_rectangle函数")
+            imgElement.onload = function() {
+                draw_rectangle(imgElement)
+            }
+        };
+        function draw_rectangle(imgElement){
+            // console.log("进入draw_rectangle函数")
+            let canvas = document.querySelector('#myCanvas');  // 获取画布
+            canvas.className = 'myCanvas';
+            canvas.width = imgElement.width;// 设置画布的宽度和高度与图片相同
+            canvas.height = imgElement.height;
+
+            let ctx = canvas.getContext('2d');
+            ctx.drawImage(imgElement, 0, 0);  // 0,0表示图片的左上角坐标
+            rectangles.forEach((rect, index) => {
+                let [ x1, y1, x2, y2 ] = rect;
+                ctx.strokeStyle = 'red';
+                ctx.lineWidth = 3; // 设置矩形框线宽
+                ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+                ctx.font = '35px Arial'; // 设置字体大小和字体
+                ctx.fillStyle = 'red';
+                ctx.fillText(index + 1, x1 - 35, y1 + 30);
+            });
+        }
+
+        pre.onclick = function(){ //上一张
+            console.log("点击上一张按钮")
+            saveresult() // 保存
+            if (currentPage > 1) { // 若页数小于等于1，无反应
+                currentPage--;
+            }
+            else{
+                alert("已经是第一页了！")
+            }
+            showPage();
+        }
+        next.onclick = function(){ //下一张
+            console.log("点击下一张按钮")
+            saveresult() // 保存
+            if (currentPage < imageFiles.length) { // 若页数大于等于最大页数，无反应
+                currentPage++;
+            }
+            else{
+                alert("已经是最后一页了！")
+            }
+            showPage();
+        }
+
+        function saveresult(){
+            console.log("点击保存按钮:进入saveresult函数")
+            let dataContainer = document.querySelector('.data-container');// 获取所有的数据行
+            let data_row = dataContainer.querySelectorAll('div');
+
+            let data_list = []
+            try{
+                data_row.forEach((div) => {// 遍历每个子div
+                    let div_index = Array.from(div.parentElement.children).indexOf(div)  //确定这个div的索引
+                    console.log("当前div的索引:", div_index)
+                    let inputs = div.querySelectorAll('input'); // 四个检测框的input和一个识别的input
+                    let det_data = []
+                    let rec_data = ""
+                    let isDataIncomplete = false; // 添加一个标志位，表示数据是否完整
+                    inputs.forEach((input, index) => {// 遍历每个input  forEach回调函数内部的return语句只会终止当前的循环迭代
+                        if (input.value == "" && index < 4) {
+                            alert("请填写完整的数据，默认为0")
+                            console.log("数据不完整，不继续执行，退出函数")
+                            throw "数据不完整"; // 直接抛出异常，这样是为了直接终止函数的执行
+                        }else{
+                            if (index < 4) {
+                                det_data.push(Number(input.value));
+                            } else {
+                                rec_data = input.value;
+                                if (rec_data != "") {
+                                    data_list.push([rec_data, det_data]);
+                                }
+                                else{// 识别为空时，选择是否删除这一行
+                                    let result = confirm("确定删除第" + (div_index+1) + "行的结果？")
+                                    console.log("是否删除:", result)
+                                    if(!result){
+                                        data_list.push([rec_data, det_data]);
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    console.log("det_data:", det_data)
+                    console.log("rec_data:", rec_data)
+                });
+                console.log("最终保存的数据：", data_list)
+                jsonlabelFiles[currentPage-1].RecognitionData = data_list
+                console.log("修改后的要保存的json数据:", jsonlabelFiles[currentPage-1].RecognitionData)
+            }catch (error) {
+                console.log("捕获到异常:", error);
+                return; // 在捕获到异常后直接终止函数的执行
+            }
+        }
+        // 点击还原按钮时，将上面动态修改的数据还原
+        backData.onclick = function(){
+            showPage()
+        }
+        // 添加检测、识别结果框
+        addData.onclick = function(){
+            console.log("点击添加检测、识别结果框")
+            let data_list = []
+            let rec_data = ""
+            let det_data = [2438, 1329, 2556, 1386, 'line_box']
+            data_list.push(rec_data, det_data);
+
+            console.log("添加的数据：", data_list)
+            jsonlabelFiles[currentPage-1].RecognitionData.push(data_list)
+            showPage()
+        }
+        
+        let searchInput = document.getElementById('searchPage');
+        let actionBtn = document.getElementById('actionBtn');
+        actionBtn.addEventListener('click', function() {
+            let pageNumber = searchInput.value;
+            if(pageNumber <= 0 || pageNumber > imageFiles.length){
+                alert("输入的页号非法！")
+            }
+            else{
+                currentPage = pageNumber
+                showPage();
+                searchInput.value = ''; //清空
+            }
+        });
+        let searchInputByName = document.getElementById('searchPageByName');
+        let actionBtnByName = document.getElementById('actionBtnByName');
+        actionBtnByName.addEventListener('click', function() {
+            let imageName = searchInputByName.value;
+            let index = imageFiles.findIndex(item => item.includes(imageName));
+            console.log("查找到的图片索引：", index)
+            if(index === -1){
+                alert("输入的图片名不存在！")
+            }
+            else{
+                currentPage = index + 1
+                showPage();
+            }
+        });
+
+        document.getElementById('down').addEventListener('click', function () { // 下载修改后的识别结果
+            let result = confirm("下载文件后页面会刷新，请确认是否下载？")
+            if (result) {
+                let update_jsonlabelFiles = {}
+                jsonlabelFiles.forEach((item, index) => {
+                    let imageName = item.imageName;
+                    let result = []
+                    result.push({})
+                    result.push(item.RecognitionData)
+                    update_jsonlabelFiles[imageName] = result;
+                });
+                let json = JSON.stringify(update_jsonlabelFiles, null, 4);// 设置indent参数，使JSON字符串格式化输出
+                console.log("要下载的的json数据：", json)
+                let blob = new Blob([json], {type: 'application/json'});
+                saveAs(blob, "./update_" + jsonfilename);
+            }
+        });
+    </script>
+    
+</body>
+</html>
